@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+librosa
+pydantic
+python-multipart
+pydub
+ffmpeg
+fastapi-cors
+scikit-learn
+scipy
+apscheduler
+sqlalchemy
+SongNameSplit
+matplotlib
