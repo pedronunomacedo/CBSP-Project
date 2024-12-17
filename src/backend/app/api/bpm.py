@@ -20,32 +20,6 @@ from ..utils.hybridApproach import HybridMultibandApproach
 
 router = APIRouter()
 
-@router.post("/bpm")
-async def get_bpm(file: UploadFile = File(...)):
-    try:
-        # Read the file content
-        audio_data = await file.read()
-
-        # Convert mp3 to wav in memory
-        audio = AudioSegment.from_file(io.BytesIO(audio_data), format="mp3")
-        wav_io = io.BytesIO()
-        audio.export(wav_io, format="wav")
-        wav_io.seek(0)
-
-        # Load audio data into librosa format
-        y, sr = librosa.load(wav_io, sr=None)
-
-        # Step 1: Detect peaks in the audio spectrum
-        peaks = detect_spectral_peaks(y, sr)
-
-        # Calculate the BPM by passing the audio data to calculate_bpm
-        bpm = calculate_bpm_from_peaks(peaks)
-
-        return {"bpm": peaks}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
-    
-
 @router.post("/bpm_per_second")
 async def get_bpm_per_second(file: UploadFile = File(...)):
     try:
@@ -187,6 +161,53 @@ async def get_mine_bpm_per_second(file: UploadFile = File(...)):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@router.post("/bpm")
+async def get_bpm(file: UploadFile = File(...)):
+    try:
+        # Read the file content
+        audio_data = await file.read()
+
+        # Convert mp3 to wav in memory
+        audio = AudioSegment.from_file(io.BytesIO(audio_data), format="mp3")
+        wav_io = io.BytesIO()
+        audio.export(wav_io, format="wav")
+        wav_io.seek(0)
+
+        # Load audio data into librosa format
+        y, sr = librosa.load(wav_io, sr=None)
+
+        # Step 1: Detect peaks in the audio spectrum
+        peaks = detect_spectral_peaks(y, sr)
+
+        # Calculate the BPM by passing the audio data to calculate_bpm
+        bpm = calculate_bpm_from_peaks(peaks)
+
+        return {"bpm": peaks}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+    
 
 
 
