@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import bpm
+from app.core.evaluator import Evaluator
 # from app.jobs.scheduler import scheduler  # Import the scheduler setup
 
 app = FastAPI()

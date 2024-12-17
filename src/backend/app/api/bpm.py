@@ -10,7 +10,7 @@ import io
 import numpy as np
 from pydub import AudioSegment
 import librosa
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks, butter, lfilter, correlate, resample
 import hashlib
 import SongNameSplit
 from scipy.ndimage import uniform_filter1d
@@ -56,6 +56,8 @@ async def get_bpm_per_second(file: UploadFile = File(...)):
             # Estimate BPM for the 1-second segment
             onset_env = librosa.onset.onset_strength(y=segment, sr=sr)
             tempo = librosa.feature.tempo(onset_envelope=onset_env, sr=sr)
+
+            peaks = librosa.onset.onset_detect(onset_envelope=onset_env, sr=sr)
             
             # Append the calculated BPM (tempo) for this second
             bpm_per_second.append(round(float(tempo[0]), 2))
@@ -105,21 +107,6 @@ async def get_mine_bpm_per_second(file: UploadFile = File(...)):
             if len(segment) < segment_length:
                 continue
 
-            # # Detect peaks in the segment
-            # distance = int(sample_rate * 60 / 200)  # Adjust for up to 200 BPM
-            # peaks, _ = find_peaks(segment, distance=distance, height=np.mean(segment) * 0.5)
-
-            # # Calculate BPM based on peak intervals
-            # if len(peaks) > 1:
-            #     peak_intervals = np.diff(peaks) / sample_rate  # Convert intervals to seconds
-            #     avg_interval = np.mean(peak_intervals)
-            #     bpm = 60 / avg_interval
-            # elif bpm_per_second:
-            #     # Interpolate using the last valid BPM if available
-            #     bpm = bpm_per_second[-1]
-            # else:
-            #     bpm = 0  # Use 0 if there's no previous BPM to use
-
             # Step 1: Compute the energy envelope
             energy = np.abs(segment) ** 2 # Square of the amplitude ( energy = amplitude^2 )
             window_size = int(0.1 * sample_rate)  # 100ms window for smoothing
@@ -136,13 +123,25 @@ async def get_mine_bpm_per_second(file: UploadFile = File(...)):
                 avg_interval = np.mean(peak_intervals)  # Average interval between peaks
                 bpm = 60 / avg_interval  # Convert seconds per beat to BPM
             else:
-                bpm = 0  # If no peaks, set BPM to 0
+                bpm = 0 
 
             bpm_per_second.append(round(bpm, 2))
 
+        final_bpm_per_second_list = []
+        for idx, bpm in enumerate(bpm_per_second):
+            if bpm == 0:
+                if idx == 0:
+                    final_bpm_per_second_list.append(bpm_per_second[idx + 1])
+                elif idx == len(bpm_per_second) - 1:
+                    final_bpm_per_second_list.append(bpm_per_second[idx - 1])
+                else:
+                    final_bpm_per_second_list.append((bpm_per_second[idx - 1] + bpm_per_second[idx + 1]) / 2)
+            else:
+                final_bpm_per_second_list.append(bpm)
+
         # Optionally, calculate an average BPM for the entire song
-        if bpm_per_second:
-            song_bpm = applyDBSCANalgorithm(bpm_per_second)
+        if final_bpm_per_second_list:
+            song_bpm = applyDBSCANalgorithm(final_bpm_per_second_list)
             song_bpm = round(song_bpm, 2)
             song_tempo = categorizeMusicTempo(song_bpm)
         else:
@@ -150,7 +149,7 @@ async def get_mine_bpm_per_second(file: UploadFile = File(...)):
             song_tempo = "Unknown"
 
         return {
-            "bpm_per_second": bpm_per_second,
+            "bpm_per_second": final_bpm_per_second_list,
             "song_bpm": song_bpm,
             "song_tempo": song_tempo
         }
@@ -158,6 +157,202 @@ async def get_mine_bpm_per_second(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
     
+
+
+
+
+
+
+
+
+
+
+# Lowpass filter for low frequencies
+def butter_lowpass(cutoff, sr, order=4):
+    nyquist = 0.5 * sr
+    if cutoff <= 0:
+        raise ValueError("Lowpass cutoff frequency must be greater than 0")
+    normal_cutoff = max(1e-6, cutoff / nyquist)  # Ensure valid normalized frequency > 0
+    b, a = butter(order, normal_cutoff, btype='low')
+    return b, a
+
+def butter_lowpass_filter(data, cutoff, sr, order=4):
+    b, a = butter_lowpass(cutoff, sr, order)
+    return lfilter(b, a, data)
+
+# Bandpass filter for middle and high frequencies
+def butter_bandpass(lowcut, highcut, sr, order=4):
+    nyquist = 0.5 * sr
+    low = lowcut / nyquist
+    high = highcut / nyquist
+    b, a = butter(order, [low, high], btype='band')
+    return b, a
+
+def butter_bandpass_filter(data, lowcut, highcut, sr, order=4):
+    b, a = butter_bandpass(lowcut, highcut, sr, order)
+    return lfilter(b, a, data)
+
+# Utility: Transient Detection (Counts energy spikes)
+def transient_detection(y, threshold=0.01):
+    diff = np.abs(np.diff(y))
+    return (diff > threshold).astype(float)
+
+# Highpass filter for high frequencies
+def butter_highpass(cutoff, sr, order=4):
+    nyquist = 0.5 * sr
+    if cutoff <= 0:
+        raise ValueError("Highpass cutoff frequency must be greater than 0")
+    normal_cutoff = cutoff / nyquist
+    b, a = butter(order, normal_cutoff, btype='high')
+    return b, a
+
+def butter_highpass_filter(data, cutoff, sr, order=4):
+    b, a = butter_highpass(cutoff, sr, order)
+    return lfilter(b, a, data)
+
+# Periodicity Detection Function (Autocorrelation)
+def compute_PeDF(odf):
+    autocorr = correlate(odf, odf, mode='full')
+    autocorr = autocorr[len(autocorr) // 2:]  # Keep positive lags only
+    return autocorr
+
+# Combine PeDFs from bands
+def combine_PeDFs(PeDF_low, PeDF_mid, PeDF_high, weights):
+    min_length = min(len(PeDF_low), len(PeDF_mid), len(PeDF_high))
+    return (weights[0] * PeDF_low[:min_length] +
+            weights[1] * PeDF_mid[:min_length] +
+            weights[2] * PeDF_high[:min_length])
+
+@router.post("/hybrid_bpm_per_second")
+async def get_hybrid_bpm_per_second(file: UploadFile = File(...)):
+    try:
+        # Step 1: Read and convert audio to WAV
+        audio_data = await file.read()
+        audio = AudioSegment.from_file(io.BytesIO(audio_data), format="mp3")
+        wav_io = io.BytesIO()
+        audio.export(wav_io, format="wav")
+        wav_io.seek(0)
+        y, sr = librosa.load(wav_io, sr=None)
+
+        # Step 2: Bandpass Filtering
+        print("[DEBUG] Before splitting audio wave into frequency bands")
+        low_band = butter_lowpass_filter(y, 200, sr)           # Low Frequency Band
+        print("[DEBUG] Before filtering middle band")
+        mid_band = butter_bandpass_filter(y, 200, 5000, sr)    # Middle Frequency Band
+        print("[DEBUG] Before filtering high band")
+        high_band = butter_highpass_filter(y, 5000, sr)        # High Frequency Band
+
+        # Step 3: Onset and Transient Detection
+        print("[DEBUG] Before detecting onsets and transients")
+        onset_low = librosa.onset.onset_strength(y=low_band, sr=sr)   # Spectral Onset for Low
+        print("[DEBUG] Before detecting onsets for mid band")
+        transient_mid = transient_detection(mid_band)                 # Transient Detection for Mid
+        print("[DEBUG] Before detecting onsets for high band")
+        transient_high = transient_detection(high_band)               # Transient Detection for High
+
+        # Resample transient_mid and transient_high to match onset_low
+        transient_mid_resampled = resample(transient_mid, len(onset_low))
+        transient_high_resampled = resample(transient_high, len(onset_low))
+
+        # Step 4: Periodicity Detection (PeDF) for each band
+        print("[DEBUG] Before computing PeDFs for low band")
+        PeDF_low = compute_PeDF(onset_low)
+        print("[DEBUG] Before computing PeDF for mid band")
+        PeDF_mid = compute_PeDF(transient_mid_resampled)
+        print("[DEBUG] Before computing PeDF for high band")
+        PeDF_high = compute_PeDF(transient_high_resampled)
+
+        # Step 5: Combine PeDFs with weights
+        weights = [0.3, 0.4, 0.3]  # Weights for Low, Mid, High bands
+        print("[DEBUG] Before combining PeDFs")
+        combined_PeDF = combine_PeDFs(PeDF_low, PeDF_mid, PeDF_high, weights)
+
+        # Step 6: Peak Detection in Combined PeDF
+        print("[DEBUG] Before detecting peaks")
+        peaks, _ = find_peaks(combined_PeDF, height=np.mean(combined_PeDF), distance=30)
+
+        # Step 7: BPM Calculation
+        if len(peaks) < 2:
+            raise ValueError("Not enough periodic peaks detected to calculate BPM.")
+
+        print("[DEBUG] Before calculating BPM")
+        peak_intervals = np.diff(peaks) * (512 / sr)  # Convert lags to time intervals (hop_size=512)
+        average_interval = np.mean(peak_intervals)
+        song_bpm = 60 / average_interval
+
+        # Step 8: Categorize music tempo
+        print("[DEBUG] Before categorizing music tempo")
+        song_tempo = categorizeMusicTempo(song_bpm)
+
+
+        # Additional Step: Get the BPM in each 5 second window
+        window_size = sr * 5  # 5-second window
+        hop_length = sr       # 1-second hop
+        total_length = len(y)
+        bpm_list = []
+
+        for start in range(0, total_length - window_size + 1, hop_length):
+            end = start + window_size
+            segment = y[start:end]
+
+            # Hybrid BPM Calculation for the Segment
+            low_band = butter_lowpass_filter(segment, 200, sr)
+            mid_band = butter_bandpass_filter(segment, 200, 5000, sr)
+            high_band = butter_highpass_filter(segment, 5000, sr)
+
+            onset_low = librosa.onset.onset_strength(y=low_band, sr=sr)   # Spectral Onset for Low
+            transient_mid = transient_detection(mid_band)                 # Transient Detection for Mid
+            transient_high = transient_detection(high_band)               # Transient Detection for High
+
+            transient_mid_resampled = resample(transient_mid, len(onset_low))
+            transient_high_resampled = resample(transient_high, len(onset_low))
+
+            PeDF_low = compute_PeDF(onset_low)
+            PeDF_mid = compute_PeDF(transient_mid_resampled)
+            PeDF_high = compute_PeDF(transient_high_resampled)
+
+            combined_PeDF = combine_PeDFs(PeDF_low, PeDF_mid, PeDF_high, weights)
+
+            peaks, _ = find_peaks(combined_PeDF, height=np.mean(combined_PeDF), distance=30)
+            if len(peaks) < 2:
+                bpm_list.append(bpm_list[-1] if bpm_list else 0)
+                continue
+
+            peak_intervals = np.diff(peaks) * (512 / sr)
+            average_interval = np.mean(peak_intervals)
+            bpm = 60 / average_interval
+
+            bpm_list.append(round(bpm, 2))
+
+        return {
+            "bpm_per_second": bpm_list,
+            "song_bpm": round(song_bpm, 2),
+            "song_tempo": song_tempo
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -249,249 +444,6 @@ async def detect_music(file: UploadFile = File(...)):
     
 
 
-
-
-
-
-# def clean_data(data):
-#     if not np.isfinite(data).all():
-#         cleaned_data = np.nan_to_num(data, nan=0.0, posinf=0.0, neginf=0.0)
-#         return cleaned_data
-#     return data
-
-# def check_data(data, step_description):
-#     if not np.isfinite(data).all():
-#         print(f"Data check failed at {step_description}. Data contains NaN or infinite values.")
-#         raise ValueError(f"Data at {step_description} contains NaN or infinite values.")
-    
-# def inspect_audio_properties(audio):
-#     print("Mean amplitude:", np.mean(audio))
-#     print("Max amplitude:", np.max(audio))
-#     print("Min amplitude:", np.min(audio))
-#     print("DC offset (mean amplitude):", np.mean(audio))
-
-# def normalize_data(data):
-#     max_val = np.max(data)
-#     if max_val > 0:  # Avoid division by zero
-#         return data / max_val
-#     return data
-
-# async def load_audio(file):
-#     try:
-#         print("DEBUG: Loading audio file!")
-#         # Read the uploaded file into a BytesIO buffer
-#         contents = await file.read()
-#         buffer = io.BytesIO(contents)
-#         audio, sr = librosa.load(buffer, sr=None)  # librosa handles the buffer directly
-#         print("DEBUG: Before cleaning the audio file data!")
-#         audio = clean_data(audio) 
-#         print("DEBUG: After cleaning the audio file data!")
-
-#         # Check for NaN or infinite values in the audio data
-#         print("DEBUG: Before checking if the audio file as NaN or infinite values!")
-#         if not np.isfinite(audio).all():
-#             raise ValueError("Audio data contains NaN or infinite values.")
-#         print("DEBUG: Before checking if the audio file as NaN or infinite values!")
-        
-#         return audio, sr
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
-    
-# def split_into_bands(audio, sr):
-#     print("Checking data before filtering...")
-#     if not np.isfinite(audio).all():
-#         print("Data contains non-finite values before filtering.")
-#         audio = clean_data(audio)
-        
-#     lfb = bandpass_filterV2(audio, 1, 200, sr)     # Low Frequency Band
-#     check_data(lfb, "Low Frequency Band")
-#     mfb = bandpass_filterV2(audio, 200, 5000, sr)  # Middle Frequency Band
-#     check_data(mfb, "Middle Frequency Band")
-#     hfb = bandpass_filterV2(audio, 5000, sr * 0.49, sr) # High Frequency Band
-#     check_data(hfb, "High Frequency Band")
-
-#     return lfb, mfb, hfb
-
-# # Low Frequency ODF
-# def get_odf_low(audio, sr):
-#     onset_env = librosa.onset.onset_strength(y=audio, sr=sr, aggregate=np.mean)
-#     normalized_onset_env = normalize_data(onset_env)
-#     check_data(normalized_onset_env, "ODF Middle")
-#     return normalized_onset_env
-
-# # Middle Frequency ODF
-# def get_odf_middle(audio, sr):
-#     # Spectral flux is the default for onset_strength with no aggregation
-#     onset_env = librosa.onset.onset_strength(y=audio, sr=sr)
-#     normalized_onset_env = normalize_data(onset_env)
-#     check_data(normalized_onset_env, "ODF Middle")
-#     return normalized_onset_env
-
-# # High Frequency ODF
-# def get_odf_high(audio, sr):
-#     S = np.abs(librosa.stft(audio))
-#     check_data(S, "STFT High before DB conversion")
-#     db_S = librosa.amplitude_to_db(S)
-#     check_data(db_S, "STFT High after DB conversion")
-#     onset_env = librosa.onset.onset_strength(S=db_S, sr=sr, feature=librosa.feature.spectral_contrast, fmin=2000.0)
-#     normalized_onset_env = normalize_data(onset_env)
-#     check_data(normalized_onset_env, "ODF High")
-#     return normalized_onset_env
-
-
-# # Helper function to save plot to a file
-# def save_plot_to_file(data, filename, title):
-#     directory = "images"
-#     if not os.path.exists(directory):
-#         os.makedirs(directory)  # Create the directory if it does not exist
-    
-#     plt.figure(figsize=(10, 3))
-#     plt.plot(data)
-#     plt.title(title)
-#     file_path = f"{directory}/{filename}.png"
-#     plt.savefig(file_path)
-#     plt.close()
-
-#     return file_path
-
-# def plot_periodicity(times, autocorr, peaks, title='Periodicity Detection', filename='periodicity'):
-#     directory = "images"
-#     if not os.path.exists(directory):
-#         os.makedirs(directory)  # Create the directory if it does not exist
-
-#     plt.figure(figsize=(10, 4))
-#     plt.plot(autocorr, label='Autocorrelation')
-#     plt.vlines(times, 0, autocorr[peaks], color='r', alpha=0.5, label='Peaks')
-#     plt.title(title)
-#     plt.xlabel('Lag')
-#     plt.ylabel('Autocorrelation value')
-#     plt.legend()
-#     file_path = f"{directory}/{filename}.png"
-#     plt.savefig(file_path)
-#     plt.close()
-
-#     return file_path
-
-
-# def calculate_periodicity(odf, sr):
-#     # Autocorrelation of the ODF
-#     autocorr = np.correlate(odf, odf, mode='full')
-#     autocorr = autocorr[autocorr.size // 2:]
-
-#     # Detect peaks in the autocorrelation to find intervals
-#     peaks = librosa.util.peak_pick(autocorr, pre_max=1, post_max=1, pre_avg=1, post_avg=1, delta=0.1, wait=1)
-
-#     # Convert peak locations to time intervals and return
-#     times = peaks / float(sr)
-#     return times, autocorr, peaks
-
-# def weighting_function(period):
-#     # Apply the weighting function to each period (time interval)
-#     bpm = 60 / period  # Convert period (in seconds) to BPM
-#     if 100 <= bpm <= 120:
-#         return 1.5  # Prioritize common dance/pop music tempos
-#     elif 60 <= bpm <= 180:
-#         return 1.0  # Normal weight for reasonable music tempos
-#     else:
-#         return 0.5  # Deprioritize very slow or very fast tempos
-    
-# def apply_weights_to_periods(times, autocorr):
-#     # Calculate periods (time differences between peaks)
-#     periods = np.diff(times)  # Calculate intervals between peaks
-    
-#     # Apply weights to each period
-#     weighted_autocorr = np.zeros_like(autocorr)
-#     for i, period in enumerate(periods):
-#         weight = weighting_function(period)  # Apply the weighting function
-#         weighted_autocorr[i] = weight * autocorr[i]  # Apply weight to the corresponding autocorrelation value
-    
-#     return weighted_autocorr
-
-# def combine_weighted_periodicities(times_low, times_mid, times_high, autocorr_low, autocorr_mid, autocorr_high):
-#     # Apply weights to each frequency band's autocorrelation
-#     weighted_ac_low = apply_weights_to_periods(times_low, autocorr_low)
-#     weighted_ac_mid = apply_weights_to_periods(times_mid, autocorr_mid)
-#     weighted_ac_high = apply_weights_to_periods(times_high, autocorr_high)
-    
-#     # Combine the weighted periodicities (PeDFs)
-#     combined_pe_df = weighted_ac_low + weighted_ac_mid + weighted_ac_high
-    
-#     return combined_pe_df
-
-# def estimate_combined_bpm(peaks_combined, sr):
-#     # Calculate intervals between peaks (in samples)
-#     intervals = np.diff(peaks_combined)
-    
-#     # Convert intervals to BPM (beats per minute)
-#     bpm_values = (sr / intervals) * 60  # Convert intervals to BPM
-#     return np.mean(bpm_values)  # Return average BPM
-
-
-# @router.post("/improved_bpm_detector")
-# async def get_mine_bpm_per_second(file: UploadFile = File(...)):
-#     try:
-#         # Get the audio data and sample rate
-#         audio, sr = await load_audio(file)
-#         print("DEBUG: After loading audio file")
-
-#         inspect_audio_properties(audio)
-
-#         print("DEBUG: Before splitting audio wave into frequency bands")
-#         # Divide the audio into low, middle, and high frequency bands
-#         lfb, mfb, hfb = split_into_bands(audio, sr)
-#         print("DEBUG: After splitting audio wave into frequency bands")
-
-#         print("DEBUG: Before getting the ODF for each frequency band")
-#         # Detect onsets for each frequency band
-#         onset_low = get_odf_low(lfb, sr)
-#         print("- DEBUG: After getting the ODF for low frequency band")
-#         onset_middle = get_odf_middle(mfb, sr)
-#         print("- DEBUG: After getting the ODF for middle frequency band")
-#         onset_high = get_odf_high(hfb, sr)
-#         print("- DEBUG: After getting the ODF for high frequency band")
-#         print("DEBUG: After getting the ODF for each frequency band")
-
-#         print("DEBUG: Before saving the ODF plot for each frequency band")
-#         # Save plots to files
-#         low_path = save_plot_to_file(onset_low, "low_freq_band", "Low Frequency Band ODF")
-#         mid_path = save_plot_to_file(onset_middle, "middle_freq_band", "Middle Frequency Band ODF")
-#         high_path = save_plot_to_file(onset_high, "high_freq_band", "High Frequency Band ODF")
-#         print("DEBUG: After saving the ODF plot for each frequency band")
-
-#         # Assuming odf_low, odf_mid, and odf_high are the ODFs obtained from previous onset/transient detection steps
-#         times_low, autocorr_low, peaks_low = calculate_periodicity(onset_low, sr)
-#         times_mid, autocorr_mid, peaks_mid = calculate_periodicity(onset_middle, sr)
-#         times_high, autocorr_high, peaks_high = calculate_periodicity(onset_high, sr)
-
-#         low_periodicity_path = plot_periodicity(times_low, autocorr_low, peaks_low, 'Low Frequency Band Periodicity', 'low_frequency_periodicity')
-#         middle_periodicity_path = plot_periodicity(times_mid, autocorr_mid, peaks_mid, 'Middle Frequency Band Periodicity', 'middle_frequency_periodicity')
-#         high_periodicity_path = plot_periodicity(times_high, autocorr_high, peaks_high, 'High Frequency Band Periodicity', 'high_frequency_periodicity')
-
-#         # Apply weighting and combine the PeDFs
-#         combined_pe_df = combine_weighted_periodicities(times_low, times_mid, times_high, autocorr_low, autocorr_mid, autocorr_high)
-
-#         # Detect peaks in the combined PeDF
-#         combined_peaks = librosa.util.peak_pick(combined_pe_df, pre_max=1, post_max=1, pre_avg=1, post_avg=1, delta=0.1, wait=1)
-
-#         # Calculate the BPM from the combined peaks
-#         combined_bpm = estimate_combined_bpm(combined_peaks, sr)
-
-        
-        
-#         return {
-#             "low_freq_band": low_path,
-#             "mid_freq_band": mid_path,
-#             "high_freq_band": high_path,
-#             "low_periodicity_path": low_periodicity_path,
-#             "middle_periodicity_path": middle_periodicity_path,
-#             "high_periodicity_path": high_periodicity_path,
-#             "combined_bpm": combined_bpm,
-#             "musicTempo": categorizeMusicTempo(combined_bpm)
-#         }
-#     except Exception as e:
-#             raise HTTPException(status_code=500, detail=f"Error processing audio file: {str(e)}")
-    
-
 @router.get("/download/{filename}")
 async def download_image(filename: str):
     file_path = f"images/{filename}.png"
@@ -504,93 +456,6 @@ async def download_image(filename: str):
         raise HTTPException(status_code=500, detail=f"Error accessing file: {str(e)}")
     
 
-
-
-
-@router.get("/hybrid_approach_bpm")
-async def get_hybrid_approach_bpm(file: UploadFile = File(...)):
-    try:
-        # Read the file content
-        audio_data = await file.read()
-
-        # Convert mp3 to wav in memory
-        audio = AudioSegment.from_file(io.BytesIO(audio_data), format="mp3")
-        wav_io = io.BytesIO()
-        audio.export(wav_io, format="wav")
-        wav_io.seek(0)
-        y, sample_rate = librosa.load(wav_io, sr=None)
-
-        lfb, mfb, hfb = split_into_bands(y, sample_rate)
-
-        # Check if y is a numpy array right after loading
-        if not isinstance(y, np.ndarray):
-            raise TypeError("Loaded audio data is not a numpy array.")
-
-        print("[DEBUG] y shape: ", y.shape)
-        print("[DEBUG] lbf shape: ", lfb.shape)
-        print("[DEBUG] mfb shape: ", mfb.shape)
-        print("[DEBUG] hfb shape: ", hfb.shape)
-
-        plot_frequency_spectrum(y, sample_rate, title="Full Frequency Spectrum")
-        plot_frequency_spectrum(lfb, sample_rate, title="Low Frequency Band")
-        plot_frequency_spectrum(mfb, sample_rate, title="Middle Frequency Band")
-        plot_frequency_spectrum(hfb, sample_rate, title="High Frequency Band")
-
-        # Create a Hybrid Approach BPM Calculator object
-        hybrid_calculator = HybridMultibandApproach()
-
-        onset_env, onsets = hybrid_calculator.detect_onsets(lfb, sample_rate)
-
-        onset_times = hybrid_calculator.convert_frames_to_times(onsets, sample_rate)
-
-        transients, transients_times = hybrid_calculator.detect_transients(hfb, sample_rate)
-
-        print("[DEBUG] onsets: ", onsets)
-        print("[DEBUG] onset_times: ", onset_times)
-        
-        print("[DEBUG] transients: ", transients)
-        print("[DEBUG] transients_times: ", transients_times)
-
-
-        # Plotting
-        plt.figure(figsize=(14, 5))
-        plt.plot(librosa.times_like(onset_env, sr=sample_rate), onset_env, label='Onset Strength')
-        plt.vlines(librosa.frames_to_time(onsets, sr=sample_rate), ymin=0, ymax=max(onset_env), color='r', linestyle='--', label='Detected Onsets')
-        plt.title('Onset Strength Envelope with Detected Onsets')
-        plt.xlabel('Time (s)')
-        plt.ylabel('Strength')
-        plt.legend()
-        plt.savefig('onset_times.png')
-
-        plt.subplot(2, 1, 2)
-        plt.plot(librosa.times_like(transients_times, sr=sample_rate), transients_times, label='Transient Strength (HFB)')
-        plt.vlines(transients_times, ymin=0, ymax=max(transients_times), color='r', linestyle='--', label='Detected Transients')
-        plt.title('High Frequency Band Transient Strength and Detected Transients')
-        plt.xlabel('Time (s)')
-        plt.ylabel('Strength')
-        plt.legend()
-        plt.savefig('transient_times.png')
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
-
-    return {
-        "onsets": onset_times,
-        "transients": transients_times
-    }
-
-
-
-def split_into_bands(audio, sr):
-    print("Checking data before filtering...")
-    if not np.isfinite(audio).all():
-        print("Data contains non-finite values before filtering.")
-        
-    lfb = bandpass_filter_chebyshev(audio, 1, 200, sr)     # Low Frequency Band
-    mfb = bandpass_filter_chebyshev(audio, 200, 5000, sr)  # Middle Frequency Band
-    hfb = bandpass_filter_chebyshev(audio, 5000, sr * 0.49, sr) # High Frequency Band
-
-    return lfb, mfb, hfb
 
 def plot_frequency_spectrum(signal, sr, title="Frequency Spectrum"):
     # Compute the Fast Fourier Transform (FFT) of the signal
