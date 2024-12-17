@@ -95,22 +95,20 @@ async def get_mine_bpm_per_second(file: UploadFile = File(...)):
         filtered_y = bandpass_filter(y, 100, 5000, sample_rate)
 
         # # List to store BPM for each second
-        segment_length = 1 * sample_rate # Number of samples in one second
-        bpm_per_second = []
+        window_size = sample_rate * 5  # 5-second window
+        hop_length = sample_rate       # 1-second hop
+        total_length = len(filtered_y)
+        bpm_list = []
 
-        # Process each 1-second segment
-        for start in range(0, len(filtered_y), segment_length):
-            end = start + segment_length
+        # Process each 5-second segment
+        for start in range(0, total_length - window_size + 1, hop_length):
+            end = start + window_size
             segment = filtered_y[start:end]
-
-            # Ensure segment is exactly 1 second
-            if len(segment) < segment_length:
-                continue
 
             # Step 1: Compute the energy envelope
             energy = np.abs(segment) ** 2 # Square of the amplitude ( energy = amplitude^2 )
-            window_size = int(0.1 * sample_rate)  # 100ms window for smoothing
-            smoothed_energy = uniform_filter1d(energy, size=window_size)  # Smooth the energy in each sample value by looking to its two direct neighbours [1, 4, 6] -> [((1+1+4)/3), ((1+4+6)/3), ((4+6+6)/3)]
+            window_size_samples = int(0.1 * sample_rate)  # 100ms window for smoothing
+            smoothed_energy = uniform_filter1d(energy, size=window_size_samples)  # Smooth the energy in each sample value by looking to its two direct neighbours [1, 4, 6] -> [((1+1+4)/3), ((1+4+6)/3), ((4+6+6)/3)]
 
             # Step 2: Detect peaks in the energy envelope
             mean_height = np.mean(smoothed_energy) * 0.5  # Adaptive height threshold
@@ -125,17 +123,17 @@ async def get_mine_bpm_per_second(file: UploadFile = File(...)):
             else:
                 bpm = 0 
 
-            bpm_per_second.append(round(bpm, 2))
+            bpm_list.append(round(bpm, 2))
 
         final_bpm_per_second_list = []
-        for idx, bpm in enumerate(bpm_per_second):
+        for idx, bpm in enumerate(bpm_list):
             if bpm == 0:
                 if idx == 0:
-                    final_bpm_per_second_list.append(bpm_per_second[idx + 1])
-                elif idx == len(bpm_per_second) - 1:
-                    final_bpm_per_second_list.append(bpm_per_second[idx - 1])
+                    final_bpm_per_second_list.append(bpm_list[idx + 1])
+                elif idx == len(bpm_list) - 1:
+                    final_bpm_per_second_list.append(bpm_list[idx - 1])
                 else:
-                    final_bpm_per_second_list.append((bpm_per_second[idx - 1] + bpm_per_second[idx + 1]) / 2)
+                    final_bpm_per_second_list.append((bpm_list[idx - 1] + bpm_list[idx + 1]) / 2)
             else:
                 final_bpm_per_second_list.append(bpm)
 

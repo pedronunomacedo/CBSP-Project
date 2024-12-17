@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Line } from "react-chartjs-2";
 import { UploadOutlined } from "@ant-design/icons";
 import { Button, message, Upload } from "antd";
@@ -8,6 +8,8 @@ import { AnimatePresence, motion } from "framer-motion";
 const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusicName, handleMusicEnd }) => {
 	const [displayedData, setDisplayedData] = useState([]);
 	const [visibleWindowStart, setVisibleWindowStart] = useState(null);
+	const [dataReady, setDataReady] = useState(false);
+
 	const [bpmData, setBpmData] = useState([]);
 	const [audioBPM, setAudioBPM] = useState(0);
 	const [audioTempo, setAudioTempo] = useState("");
@@ -19,10 +21,25 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
 	const [mineAudioTempo, setMineAudioTempo] = useState("");
 	const [mineDisplayedData, setMineDisplayedData] = useState([]);
 
+	const [hybridBpmData, setHybridBpmData] = useState([]);
+	const [hybridAudioBPM, setHybridAudioBPM] = useState(0);
+	const [hybridAudioTempo, setHybridAudioTempo] = useState("");
+	const [hybridDisplayedData, setHybridDisplayedData] = useState([]);
+
 
 	const [musicPeaks, setMusicPeaks] = useState([]); // DELETE:  Music peaks!
 
 	const windowSize = 20; // Number of points to display in the visible window
+
+	useEffect(() => {
+		if (
+			bpmData.length > 0 &&
+			mineBpmData.length > 0 &&
+			hybridBpmData.length > 0
+		) {
+			setDataReady(true);
+		}
+	}, [bpmData, mineBpmData, hybridBpmData]);
 
 	// Handle file selection
 	const handleFileChange = (file) => {
@@ -48,6 +65,8 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
 			librosaTempo: '',
 			mineBmp: '',
 			mineTempo: '',
+			hybridBpm: '',
+			hybridTempo: '',
 		};
 
 		try {
@@ -121,21 +140,10 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
 			message.error("Failed to upload file. Please try again.");
 		}
 
-		// Get the existing audio data from local storage (if any)
-		const storedAudioData = JSON.parse(localStorage.getItem("audio_data")) || [];
-	
-		storedAudioData.push(newAudioData);
-	
-		// Store the updated audio data back to local storage
-		localStorage.setItem("audio_data", JSON.stringify(storedAudioData));
-
-
-
-
-		// DELETE:   Get the music peaks!
+		// Get the BPM and tempo from my algorithm 
 		try {
 			const response = await fetch(
-				"http://localhost:8000/api/v1/detect_music",
+				"http://localhost:8000/api/v1/hybrid_bpm_per_second",
 				{
 					method: "POST",
 					body: formData,
@@ -147,13 +155,67 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
 			}
 
 			const data = await response.json();
-			setMusicPeaks(data.peaks);
+			setHybridBpmData(data.bpm_per_second);
+			setHybridAudioBPM(data.song_bpm);
+			setHybridAudioTempo(data.song_tempo);
 
-			console.log("Peaks: ", data.peaks);
+			newAudioData.hybridBpm = data.song_bpm;
+			newAudioData.hybridTempo = data.song_tempo;
+
+			// Initialize displayedData with the first windowSize points
+			setHybridDisplayedData(data.bpm_per_second.slice(0, windowSize));
+
+			// Set the audio source to play immediately after upload
+			if (audioRef.current) {
+				audioRef.current.src = URL.createObjectURL(file);
+			}
 		} catch (error) {
-			console.error("Error getting file frequency peaks:", error);
-			message.error("Failed to get file frequency peaks. Please try again.");
+			console.error("Error uploading file:", error);
+			message.error("Failed to upload file. Please try again.");
 		}
+
+		// Get the existing audio data from local storage (if any)
+		const storedAudioData = JSON.parse(localStorage.getItem("audio_data")) || [];
+	
+		storedAudioData.push(newAudioData);
+	
+		// Store the updated audio data back to local storage
+		localStorage.setItem("audio_data", JSON.stringify(storedAudioData));
+
+
+		if (
+			bpmData.length > 0 &&
+			mineBpmData.length > 0 &&
+			hybridBpmData.length > 0
+		) {
+			setDataReady(true);
+		}
+
+
+
+
+		// DELETE:   Get the music peaks!
+		// try {
+		// 	const response = await fetch(
+		// 		"http://localhost:8000/api/v1/detect_music",
+		// 		{
+		// 			method: "POST",
+		// 			body: formData,
+		// 		}
+		// 	);
+
+		// 	if (!response.ok) {
+		// 		throw new Error("Failed to upload file");
+		// 	}
+
+		// 	const data = await response.json();
+		// 	setMusicPeaks(data.peaks);
+
+		// 	console.log("Peaks: ", data.peaks);
+		// } catch (error) {
+		// 	console.error("Error getting file frequency peaks:", error);
+		// 	message.error("Failed to get file frequency peaks. Please try again.");
+		// }
 	};
 
 	// Update the visible window of data as the song progresses
@@ -181,6 +243,9 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
 
 			const mineVisibleData = mineBpmData.slice(windowStart, maxVisibleIndex + 1);
 			setMineDisplayedData(mineVisibleData);
+
+			const hybridVisibleData = hybridBpmData.slice(windowStart, maxVisibleIndex + 1);
+			setHybridDisplayedData(hybridVisibleData);
 		}
 	};
 
@@ -272,7 +337,7 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
 		labels: chartLabels,
 		datasets: [
 			{
-				label: "BPM per Second",
+				label: "Librosa BPM",
 				data: displayedData,
 				borderColor: "rgba(75, 192, 192, 1)",
 				backgroundColor: "rgba(75, 192, 192, 0.2)",
@@ -283,7 +348,7 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
 				pointBackgroundColor: "rgba(75, 192, 192, 1)", // Fixed color
 			},
 			{
-				label: "Mine BPM per Second",
+				label: "Mine BPM",
 				data: mineDisplayedData,
 				borderColor: "rgba(255, 99, 132, 1)",
 				backgroundColor: "rgba(255, 99, 132, 0.2)",
@@ -292,6 +357,17 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
 				pointRadius: 3,
 				pointHoverRadius: 5,
 				pointBackgroundColor: "rgba(255, 99, 132, 1)", // Fixed color
+			},
+			{
+				label: "Hybrid BPM",
+				data: hybridDisplayedData,
+				borderColor: "rgba(0, 0, 255, 1)",
+				backgroundColor: "rgba(0, 0, 255, 0.2)",
+				borderWidth: 2,
+				tension: 0.2,
+				pointRadius: 3,
+				pointHoverRadius: 5,
+				pointBackgroundColor: "rgba(0, 0, 255, 1)", // Fixed color
 			},
 		],
 	};
@@ -327,7 +403,7 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
 					exit={{ opacity: 0, y: -10 }}
 					key="chartSection"
                 >
-                    {(bpmData.length > 0) && (
+                    {dataReady && (
                         <div className="w-full flex justify-center">
                             <div className="w-full md:w-4/5 h-[400px] mt-[20px]">
                                 <Line data={chartData} options={options} />
@@ -335,7 +411,7 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
                         </div>
                     )}
 
-                    {(audioBPM && audioTempo !== "") ? 
+                    {(audioBPM && audioTempo && hybridAudioTempo !== "") ? 
                         (
                             <div className="w-2/3 flex flex-col mx-auto space-y-3 justify-center">
                                 <div className="flex flex-col items-start">
@@ -354,6 +430,14 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
                                     <span className="font-semibold">Mine Audio tempo:</span> {mineAudioTempo ? mineAudioTempo : "-"}
                                     </h4>
                                 </div>
+								<div className="flex flex-col items-start">
+                                    <h4 className="text-md">
+                                        <span className="font-semibold">Hybrid Audio overall BPM:</span> {hybridAudioBPM ? hybridAudioBPM : "-"}
+                                    </h4>
+                                    <h4 className="text-md">
+                                    <span className="font-semibold">Hybrid Audio tempo:</span> {hybridAudioTempo ? hybridAudioTempo : "-"}
+                                    </h4>
+                                </div>
                             </div>
                         ) 
                         : 
@@ -367,15 +451,22 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
                 ref={audioRef}
                 onTimeUpdate={handleTimeUpdate} // Track the time update for sliding window
                 onLoadedData={() => {
-                    audioRef.current.play();
-                    setMusicPlaying(true);
-                }}
-                onEnded={() => {handleMusicEnd(); setDisplayedData(bpmData); setMineDisplayedData(mineBpmData)}}
+					if (dataReady) {
+						audioRef.current.play();
+						setMusicPlaying(true);
+					}
+				}}
+                onEnded={() => {
+					handleMusicEnd(); 
+					setDisplayedData(bpmData); 
+					setMineDisplayedData(mineBpmData); 
+					setHybridDisplayedData(hybridBpmData);
+				}}
                 hidden
             />
 
 
-			<span>{JSON.stringify(musicPeaks)}</span>
+			{/* <span>{JSON.stringify(musicPeaks)}</span> */}
 		</div>
 	);
 };

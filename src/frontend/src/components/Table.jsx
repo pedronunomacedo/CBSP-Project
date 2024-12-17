@@ -15,6 +15,8 @@ const Table = () => {
             librosaTempo: audio.librosaTempo,
             mineBpm: audio.mineBmp,
 			mineTempo: audio.mineTempo,
+            hybridBpm: audio.hybridBpm,
+            hybridTempo: audio.hybridTempo,
         }));
 		
         console.log("localStorage.getItem(audio_data): ", musics);
@@ -39,13 +41,23 @@ const Table = () => {
             width: 50,
         },
         {
-            title: 'Obtained tempo',
+            title: 'Mine Obtained tempo',
             dataIndex: 'mineTempo',
             width: 150,
         },
         {
-            title: 'Obtained BPM',
+            title: 'Mine Obtained BPM',
             dataIndex: 'mineBpm',
+            width: 50,
+        },
+        {
+            title: 'Hybrid Obtained tempo',
+            dataIndex: 'hybridTempo',
+            width: 150,
+        },
+        {
+            title: 'Hybrid Obtained BPM',
+            dataIndex: 'hybridBpm',
             width: 50,
         },
     ];
