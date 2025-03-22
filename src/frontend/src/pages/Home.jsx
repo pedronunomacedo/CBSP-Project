@@ -1,5 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Line } from "react-chartjs-2";
+import React, { useState, useRef } from "react";
 import "chart.js/auto";
 import MusicPlayer from "../components/MusicPlayer";
 import MusicInfo from "../components/MusicInfo";

@@ -1,0 +1,302 @@
+[
+    {
+        "name": "Hello",
+        "singer": "Adele",
+        "librosaBpm": 156.61,
+        "librosaTempo": "Unknown",
+        "mineBmp": 150.05,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 120.6,
+        "hybridTempo": "Unknown"
+    },
+    {
+        "name": "Million Dollar Baby",
+        "singer": "Ava Max",
+        "librosaBpm": 132.51,
+        "librosaTempo": "Allegro (Fast and Lively)",
+        "mineBmp": 138.33,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 126.24,
+        "hybridTempo": "Allegro (Fast and Lively)"
+    },
+    {
+        "name": "Beautiful Things",
+        "singer": "Benson Boone",
+        "librosaBpm": 105.47,
+        "librosaTempo": "Andante (Walking Pace)",
+        "mineBmp": 144.68,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 114.5,
+        "hybridTempo": "Moderato (Moderate)"
+    },
+    {
+        "name": "BIRDS OF A FEATHER",
+        "singer": "Billie Eilish",
+        "librosaBpm": 105.47,
+        "librosaTempo": "Andante (Walking Pace)",
+        "mineBmp": 150.51,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 103.6,
+        "hybridTempo": "Andante (Walking Pace)"
+    },
+    {
+        "name": "Good Luck, Babe!",
+        "singer": "Chappell Roan",
+        "librosaBpm": 117.45,
+        "librosaTempo": "Moderato (Moderate)",
+        "mineBmp": 150.28,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 115.82,
+        "hybridTempo": "Moderato (Moderate)"
+    },
+    {
+        "name": "HOT TO GO!",
+        "singer": "Chappell Roan",
+        "librosaBpm": 139.67,
+        "librosaTempo": "Allegro (Fast and Lively)",
+        "mineBmp": 141.57,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 131.36,
+        "hybridTempo": "Allegro (Fast and Lively)"
+    },
+    {
+        "name": "Sailor Song",
+        "singer": "Gigi Perez",
+        "librosaBpm": 126.05,
+        "librosaTempo": "Allegro (Fast and Lively)",
+        "mineBmp": 149.47,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 116.82,
+        "hybridTempo": "Moderato (Moderate)"
+    },
+    {
+        "name": "I Love You, I’m Sorry",
+        "singer": "Gracie Abrams",
+        "librosaBpm": 117.45,
+        "librosaTempo": "Moderato (Moderate)",
+        "mineBmp": 148.16,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 116,
+        "hybridTempo": "Moderato (Moderate)"
+    },
+    {
+        "name": "That’s So True",
+        "singer": "Gracie Abrams",
+        "librosaBpm": 143.55,
+        "librosaTempo": "Allegro (Fast and Lively)",
+        "mineBmp": 142.04,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 122.11,
+        "hybridTempo": "Allegro (Fast and Lively)"
+    },
+    {
+        "name": "Too Sweet",
+        "singer": "Hozier",
+        "librosaBpm": 117.45,
+        "librosaTempo": "Moderato (Moderate)",
+        "mineBmp": 146.44,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 115.77,
+        "hybridTempo": "Moderato (Moderate)"
+    },
+    {
+        "name": "Whatcha Say",
+        "singer": "Jason Derulo",
+        "librosaBpm": 143.55,
+        "librosaTempo": "Allegro (Fast and Lively)",
+        "mineBmp": 144.72,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 143.99,
+        "hybridTempo": "Allegro (Fast and Lively)"
+    },
+    {
+        "name": "I Am Not Okay",
+        "singer": "Jelly Roll",
+        "librosaBpm": 152,
+        "librosaTempo": "Allegro (Fast and Lively)",
+        "mineBmp": 146.13,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 149.33,
+        "hybridTempo": "Allegro (Fast and Lively)"
+    },
+    {
+        "name": "Not Like Us",
+        "singer": "Kendrick Lamar",
+        "librosaBpm": 101.2,
+        "librosaTempo": "Andante (Walking Pace)",
+        "mineBmp": 140.04,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 97.15,
+        "hybridTempo": "Andante (Walking Pace)"
+    },
+    {
+        "name": "Stargazing",
+        "singer": "Kygo & Justin Jesso",
+        "librosaBpm": 99.38,
+        "librosaTempo": "Andante (Walking Pace)",
+        "mineBmp": 137.65,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 101.41,
+        "hybridTempo": "Andante (Walking Pace)"
+    },
+    {
+        "name": "Die With A Smile",
+        "singer": "Lady Gaga, Bruno Mars",
+        "librosaBpm": 156.61,
+        "librosaTempo": "Unknown",
+        "mineBmp": 144.47,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 156.04,
+        "hybridTempo": "Unknown"
+    },
+    {
+        "name": "Lies Lies Lies",
+        "singer": "Morgan Wallen",
+        "librosaBpm": 107.67,
+        "librosaTempo": "Andante (Walking Pace)",
+        "mineBmp": 149.77,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 156.81,
+        "hybridTempo": "Unknown"
+    },
+    {
+        "name": "Love Somebody",
+        "singer": "Morgan Wallen",
+        "librosaBpm": 123.05,
+        "librosaTempo": "Allegro (Fast and Lively)",
+        "mineBmp": 129.34,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 121.71,
+        "hybridTempo": "Allegro (Fast and Lively)"
+    },
+    {
+        "name": "Tu Boda",
+        "singer": "Oscar Maydon x Fuerza Regida",
+        "librosaBpm": 112.35,
+        "librosaTempo": "Moderato (Moderate)",
+        "mineBmp": 143.68,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 127.74,
+        "hybridTempo": "Allegro (Fast and Lively)"
+    },
+    {
+        "name": "I Had Some Help",
+        "singer": "Post Malone & Morgan Wallen",
+        "librosaBpm": 129.2,
+        "librosaTempo": "Allegro (Fast and Lively)",
+        "mineBmp": 131.96,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 127.99,
+        "hybridTempo": "Allegro (Fast and Lively)"
+    },
+    {
+        "name": "APT.",
+        "singer": "ROSÉ & Bruno Mars",
+        "librosaBpm": 147.66,
+        "librosaTempo": "Allegro (Fast and Lively)",
+        "mineBmp": 149.3,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 143.89,
+        "hybridTempo": "Allegro (Fast and Lively)"
+    },
+    {
+        "name": "Espresso",
+        "singer": "Sabrina Carpenter",
+        "librosaBpm": 105.47,
+        "librosaTempo": "Andante (Walking Pace)",
+        "mineBmp": 140.03,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 104.17,
+        "hybridTempo": "Andante (Walking Pace)"
+    },
+    {
+        "name": "Please Please Please",
+        "singer": "Sabrina Carpenter",
+        "librosaBpm": 107.67,
+        "librosaTempo": "Andante (Walking Pace)",
+        "mineBmp": 143.66,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 106.99,
+        "hybridTempo": "Andante (Walking Pace)"
+    },
+    {
+        "name": "Taste",
+        "singer": "Sabrina Carpenter",
+        "librosaBpm": 112.35,
+        "librosaTempo": "Moderato (Moderate)",
+        "mineBmp": 138.05,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 112.62,
+        "hybridTempo": "Moderato (Moderate)"
+    },
+    {
+        "name": "A Bar Song",
+        "singer": "Shaboozey",
+        "librosaBpm": 161.5,
+        "librosaTempo": "Vivace (Lively and Fast)",
+        "mineBmp": 152.09,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 161.99,
+        "hybridTempo": "Vivace (Lively and Fast)"
+    },
+    {
+        "name": "Lose Control",
+        "singer": "Teddy Swims",
+        "librosaBpm": 161.5,
+        "librosaTempo": "Vivace (Lively and Fast)",
+        "mineBmp": 150.07,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 159.43,
+        "hybridTempo": "Vivace (Lively and Fast)"
+    },
+    {
+        "name": "Timeless",
+        "singer": "The Weeknd, Playboi Carti",
+        "librosaBpm": 120.19,
+        "librosaTempo": "Unknown",
+        "mineBmp": 142.85,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 118.85,
+        "hybridTempo": "Moderato (Moderate)"
+    },
+    {
+        "name": "Darling, I",
+        "singer": "Tyler, The Creator",
+        "librosaBpm": 97.95,
+        "librosaTempo": "Andante (Walking Pace)",
+        "mineBmp": 149.96,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 102.85,
+        "hybridTempo": "Andante (Walking Pace)"
+    },
+    {
+        "name": "Like Him",
+        "singer": "Tyler, The Creator",
+        "librosaBpm": 97.42,
+        "librosaTempo": "Andante (Walking Pace)",
+        "mineBmp": 148.37,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 115.36,
+        "hybridTempo": "Moderato (Moderate)"
+    },
+    {
+        "name": "Tyler, The Creator",
+        "singer": "Rah Tah Tah",
+        "librosaBpm": 109.96,
+        "librosaTempo": "Moderato (Moderate)",
+        "mineBmp": 150.99,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 164.99,
+        "hybridTempo": "Vivace (Lively and Fast)"
+    },
+    {
+        "name": "Sticky",
+        "singer": "Tyler, The Creator",
+        "librosaBpm": 107.67,
+        "librosaTempo": "Andante (Walking Pace)",
+        "mineBmp": 154.8,
+        "mineTempo": "Allegro (Fast and Lively)",
+        "hybridBpm": 147.89,
+        "hybridTempo": "Allegro (Fast and Lively)"
+    }
+]

@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Line } from "react-chartjs-2";
-import { UploadOutlined } from "@ant-design/icons";
-import { Button, message, Upload } from "antd";
+import { message } from "antd";
 import UploadBtn from "./buttons/UploadBtn";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -26,10 +25,7 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
 	const [hybridAudioTempo, setHybridAudioTempo] = useState("");
 	const [hybridDisplayedData, setHybridDisplayedData] = useState([]);
 
-
-	const [musicPeaks, setMusicPeaks] = useState([]); // DELETE:  Music peaks!
-
-	const windowSize = 20; // Number of points to display in the visible window
+	const windowSize = 7; // Number of points to display in the visible window
 
 	useEffect(() => {
 		if (
@@ -329,7 +325,7 @@ const MusicInfo = ({ musicPlaying, setMusicPlaying, audioRef, musicName, setMusi
 	// Generate x-axis labels for the current window
 	const chartLabels = Array.from(
 		{ length: displayedData.length },
-		(_, i) => i + 1 + visibleWindowStart
+		(_, i) => (i + visibleWindowStart) * 5 // 5-second intervals
 	);
 
 	// Prepare data for the chart

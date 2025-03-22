@@ -62,15 +62,6 @@ const Table = () => {
         },
     ];
 
-    // State for selected row keys
-    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-
-    // Handler for row selection change
-    const onSelectChange = (newSelectedRowKeys) => {
-        console.log('Selected row keys changed:', newSelectedRowKeys);
-        setSelectedRowKeys(newSelectedRowKeys);
-    };
-
     return (
         <AntdTable
             columns={columns}

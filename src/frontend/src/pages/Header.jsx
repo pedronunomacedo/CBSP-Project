@@ -1,5 +1,4 @@
 import React from "react";
-import { motion } from "motion/react";
 import Statistics from "./Statistics";
 
 const Header = () => {

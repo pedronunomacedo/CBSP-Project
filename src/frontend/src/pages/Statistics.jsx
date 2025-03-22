@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Button, Modal } from "antd";
-import { motion } from "motion/react";
 import Table from "../components/Table";
 
 const Statistics = () => {
